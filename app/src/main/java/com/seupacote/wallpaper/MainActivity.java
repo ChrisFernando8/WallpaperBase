@@ -1,5 +1,6 @@
 package com.seupacote.wallpaper;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -7,7 +8,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -35,47 +35,30 @@ public class MainActivity extends AppCompatActivity {
         );
 
         WallpaperAdapter adapter =
-                new WallpaperAdapter(wallpapers, this::showWallpaperOptions);
+                new WallpaperAdapter(wallpapers, this::openSystemWallpaperPicker);
 
         recyclerView.setAdapter(adapter);
     }
 
-    // 🔹 Diálogo simples (Samsung usa o próprio editor depois)
-    private void showWallpaperOptions(int resId) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Definir papel de parede");
-        builder.setItems(
-                new CharSequence[]{"Tela inicial", "Tela de bloqueio", "Ambas"},
-                (dialog, which) -> applyWallpaperSamsung(resId)
-        );
-        builder.show();
-    }
-
-    // 🔥 MÉTODO OFICIAL QUE FUNCIONA NO SAMSUNG / KNOX
-    private void applyWallpaperSamsung(int resId) {
+    private void openSystemWallpaperPicker(int resId) {
         try {
-            // 1️⃣ Criar diretório temporário
-            File dir = new File(getCacheDir(), "wallpapers");
-            if (!dir.exists()) dir.mkdirs();
-
-            // 2️⃣ Criar arquivo temporário
-            File file = new File(dir, "wallpaper.png");
-
             Bitmap bitmap = BitmapFactory.decodeResource(getResources(), resId);
 
+            File cacheDir = new File(getCacheDir(), "wallpapers");
+            if (!cacheDir.exists()) cacheDir.mkdirs();
+
+            File file = new File(cacheDir, "wallpaper.png");
             FileOutputStream out = new FileOutputStream(file);
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
             out.flush();
             out.close();
 
-            // 3️⃣ Criar URI segura
             Uri uri = FileProvider.getUriForFile(
                     this,
-                    getPackageName() + ".provider",
+                    "com.seupacote.wallpaper.provider",
                     file
             );
 
-            // 4️⃣ Abrir editor oficial do sistema
             Intent intent = new Intent(Intent.ACTION_ATTACH_DATA);
             intent.setDataAndType(uri, "image/*");
             intent.putExtra("mimeType", "image/*");
@@ -84,8 +67,8 @@ public class MainActivity extends AppCompatActivity {
             startActivity(Intent.createChooser(intent, "Definir papel de parede"));
 
         } catch (Exception e) {
+            Toast.makeText(this, "Erro ao abrir papel de parede", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
-            Toast.makeText(this, "Erro ao aplicar wallpaper", Toast.LENGTH_SHORT).show();
         }
     }
 }
