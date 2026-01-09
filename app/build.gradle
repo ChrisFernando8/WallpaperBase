@@ -3,7 +3,8 @@ plugins {
 }
 
 android {
-    compileSdk 34
+     namespace "com.seupacote.wallpaper"   
+     compileSdk 34
 
     defaultConfig {
         applicationId "com.seupacote.wallpaper"
