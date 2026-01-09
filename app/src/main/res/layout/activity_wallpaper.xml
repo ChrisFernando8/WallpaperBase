@@ -5,10 +5,10 @@
     android:background="#000">
 
     <ImageView
-        android:id="@+id/previewImage"
+        android:id="@+id/fullWallpaper"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="centerCrop"
+        android:scaleType="centerCrop"/>
         android:contentDescription="@string/app_name" />
 
 </FrameLayout>
