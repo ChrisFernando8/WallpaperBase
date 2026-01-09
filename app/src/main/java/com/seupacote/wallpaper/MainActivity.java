@@ -20,6 +20,8 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String AUTHORITY = "com.seupacote.wallpaper.provider";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,39 +37,54 @@ public class MainActivity extends AppCompatActivity {
         );
 
         WallpaperAdapter adapter =
-                new WallpaperAdapter(wallpapers, this::openSystemWallpaperPicker);
+                new WallpaperAdapter(wallpapers, this::showOptions);
 
         recyclerView.setAdapter(adapter);
     }
 
-    private void openSystemWallpaperPicker(int resId) {
+    private void showOptions(int resId) {
+        new AlertDialog.Builder(this)
+                .setTitle("Definir papel de parede")
+                .setItems(
+                        new CharSequence[]{"Tela inicial", "Tela de bloqueio", "Ambas"},
+                        (dialog, which) -> openSamsungWallpaperEditor(resId)
+                )
+                .show();
+    }
+
+    private void openSamsungWallpaperEditor(int resId) {
         try {
-            Bitmap bitmap = BitmapFactory.decodeResource(getResources(), resId);
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 2; // evita crash por memória
 
-            File cacheDir = new File(getCacheDir(), "wallpapers");
-            if (!cacheDir.exists()) cacheDir.mkdirs();
+            Bitmap bitmap = BitmapFactory.decodeResource(
+                    getResources(),
+                    resId,
+                    options
+            );
 
-            File file = new File(cacheDir, "wallpaper.png");
-            FileOutputStream out = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-            out.flush();
-            out.close();
+            File dir = new File(getCacheDir(), "wallpapers");
+            if (!dir.exists()) dir.mkdirs();
+
+            File file = new File(dir, "wallpaper.jpg");
+            FileOutputStream fos = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, fos);
+            fos.close();
 
             Uri uri = FileProvider.getUriForFile(
                     this,
-                    "com.seupacote.wallpaper.provider",
+                    AUTHORITY,
                     file
             );
 
-            Intent intent = new Intent(Intent.ACTION_ATTACH_DATA);
+            Intent intent = new Intent(Intent.ACTION_SET_WALLPAPER);
             intent.setDataAndType(uri, "image/*");
-            intent.putExtra("mimeType", "image/*");
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-            startActivity(Intent.createChooser(intent, "Definir papel de parede"));
+            startActivity(intent);
 
         } catch (Exception e) {
-            Toast.makeText(this, "Erro ao abrir papel de parede", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Erro ao abrir editor de papel de parede", Toast.LENGTH_LONG).show();
             e.printStackTrace();
         }
     }
