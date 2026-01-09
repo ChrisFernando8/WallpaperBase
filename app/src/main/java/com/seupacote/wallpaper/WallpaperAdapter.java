@@ -12,37 +12,50 @@ import com.bumptech.glide.Glide;
 
 import java.util.List;
 
-public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.ViewHolder> {
+public class WallpaperAdapter
+        extends RecyclerView.Adapter<WallpaperAdapter.ViewHolder> {
 
     private final List<Integer> wallpapers;
     private final OnWallpaperClick listener;
 
-    interface OnWallpaperClick {
+    // Interface DEVE ser pública
+    public interface OnWallpaperClick {
         void onClick(int resId);
     }
 
-    public WallpaperAdapter(List<Integer> wallpapers, OnWallpaperClick listener) {
+    public WallpaperAdapter(List<Integer> wallpapers,
+                            OnWallpaperClick listener) {
         this.wallpapers = wallpapers;
         this.listener = listener;
     }
 
     @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public ViewHolder onCreateViewHolder(
+            @NonNull ViewGroup parent, int viewType) {
+
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_wallpaper, parent, false);
+
         return new ViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+    public void onBindViewHolder(
+            @NonNull ViewHolder holder, int position) {
+
         int resId = wallpapers.get(position);
+
         Glide.with(holder.imageView.getContext())
                 .load(resId)
                 .centerCrop()
+                .placeholder(android.R.color.darker_gray)
+                .error(android.R.color.darker_gray)
                 .into(holder.imageView);
 
-        holder.itemView.setOnClickListener(v -> listener.onClick(resId));
+        holder.itemView.setOnClickListener(
+                v -> listener.onClick(resId)
+        );
     }
 
     @Override
@@ -51,11 +64,12 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.View
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
+
         ImageView imageView;
 
-        ViewHolder(View itemView) {
+        ViewHolder(@NonNull View itemView) {
             super(itemView);
             imageView = itemView.findViewById(R.id.imageWallpaper);
         }
     }
-}
+        }
