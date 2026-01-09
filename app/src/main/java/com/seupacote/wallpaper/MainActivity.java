@@ -1,8 +1,8 @@
 package com.seupacote.wallpaper;
 
-import android.app.WallpaperManager;
 import android.content.Intent;
-import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Toast;
@@ -15,13 +15,10 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-
-    private int selectedResId = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,71 +40,52 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
     }
 
+    // 🔹 Diálogo simples (Samsung usa o próprio editor depois)
     private void showWallpaperOptions(int resId) {
-        selectedResId = resId;
-
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Definir papel de parede");
         builder.setItems(
                 new CharSequence[]{"Tela inicial", "Tela de bloqueio", "Ambas"},
-                (dialog, which) -> applyWallpaperSamsung()
+                (dialog, which) -> applyWallpaperSamsung(resId)
         );
         builder.show();
     }
 
-    /**
-     * MÉTODO OFICIAL — FUNCIONA EM SAMSUNG / ANDROID 13+
-     */
-    private void applyWallpaperSamsung() {
+    // 🔥 MÉTODO OFICIAL QUE FUNCIONA NO SAMSUNG / KNOX
+    private void applyWallpaperSamsung(int resId) {
         try {
-            // Copia o drawable para um arquivo temporário
-            Uri uri = copyDrawableToCache(selectedResId);
+            // 1️⃣ Criar diretório temporário
+            File dir = new File(getCacheDir(), "wallpapers");
+            if (!dir.exists()) dir.mkdirs();
 
-            WallpaperManager wallpaperManager =
-                    WallpaperManager.getInstance(this);
+            // 2️⃣ Criar arquivo temporário
+            File file = new File(dir, "wallpaper.png");
 
-            Intent intent =
-                    wallpaperManager.getCropAndSetWallpaperIntent(uri);
+            Bitmap bitmap = BitmapFactory.decodeResource(getResources(), resId);
 
-            startActivity(intent);
+            FileOutputStream out = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            out.flush();
+            out.close();
+
+            // 3️⃣ Criar URI segura
+            Uri uri = FileProvider.getUriForFile(
+                    this,
+                    getPackageName() + ".provider",
+                    file
+            );
+
+            // 4️⃣ Abrir editor oficial do sistema
+            Intent intent = new Intent(Intent.ACTION_ATTACH_DATA);
+            intent.setDataAndType(uri, "image/*");
+            intent.putExtra("mimeType", "image/*");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            startActivity(Intent.createChooser(intent, "Definir papel de parede"));
 
         } catch (Exception e) {
-            Toast.makeText(
-                    this,
-                    "Erro ao aplicar papel de parede",
-                    Toast.LENGTH_SHORT
-            ).show();
             e.printStackTrace();
+            Toast.makeText(this, "Erro ao aplicar wallpaper", Toast.LENGTH_SHORT).show();
         }
-    }
-
-    /**
-     * Converte drawable em arquivo para uso pelo sistema
-     */
-    private Uri copyDrawableToCache(int resId) throws Exception {
-        File cacheDir = new File(getCacheDir(), "wallpapers");
-        if (!cacheDir.exists()) cacheDir.mkdirs();
-
-        File file = new File(cacheDir, "wallpaper.png");
-
-        Resources res = getResources();
-        InputStream inputStream = res.openRawResource(resId);
-        FileOutputStream outputStream = new FileOutputStream(file);
-
-        byte[] buffer = new byte[4096];
-        int read;
-        while ((read = inputStream.read(buffer)) != -1) {
-            outputStream.write(buffer, 0, read);
-        }
-
-        inputStream.close();
-        outputStream.flush();
-        outputStream.close();
-
-        return FileProvider.getUriForFile(
-                this,
-                getPackageName() + ".provider",
-                file
-        );
     }
 }
