@@ -1,13 +1,11 @@
 package com.seupacote.wallpaper;
 
-import android.app.AlertDialog;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -15,12 +13,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-
-    private static final String AUTHORITY = "com.seupacote.wallpaper.provider";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,43 +34,48 @@ public class MainActivity extends AppCompatActivity {
         );
 
         WallpaperAdapter adapter =
-                new WallpaperAdapter(wallpapers, this::showOptions);
+                new WallpaperAdapter(wallpapers, this::showWallpaperOptions);
 
         recyclerView.setAdapter(adapter);
     }
 
-    private void showOptions(int resId) {
-        new AlertDialog.Builder(this)
-                .setTitle("Definir papel de parede")
-                .setItems(
-                        new CharSequence[]{"Tela inicial", "Tela de bloqueio", "Ambas"},
-                        (dialog, which) -> openSamsungWallpaperEditor(resId)
-                )
-                .show();
+    private void showWallpaperOptions(int resId) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Definir papel de parede");
+        builder.setItems(
+                new CharSequence[]{"Tela inicial", "Tela de bloqueio", "Ambas"},
+                (dialog, which) -> openSystemWallpaperPicker(resId)
+        );
+        builder.show();
     }
 
-    private void openSamsungWallpaperEditor(int resId) {
+    /**
+     * MÉTODO SEGURO PARA SAMSUNG / ANDROID 13+
+     * Abre o editor oficial do sistema
+     */
+    private void openSystemWallpaperPicker(int resId) {
         try {
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inSampleSize = 2; // evita crash por memória
+            // Criar arquivo temporário
+            File cacheDir = new File(getCacheDir(), "wallpapers");
+            if (!cacheDir.exists()) cacheDir.mkdirs();
 
-            Bitmap bitmap = BitmapFactory.decodeResource(
-                    getResources(),
-                    resId,
-                    options
-            );
+            File file = new File(cacheDir, "wallpaper.png");
 
-            File dir = new File(getCacheDir(), "wallpapers");
-            if (!dir.exists()) dir.mkdirs();
+            InputStream inputStream = getResources().openRawResource(resId);
+            FileOutputStream outputStream = new FileOutputStream(file);
 
-            File file = new File(dir, "wallpaper.jpg");
-            FileOutputStream fos = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, fos);
-            fos.close();
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
+
+            inputStream.close();
+            outputStream.close();
 
             Uri uri = FileProvider.getUriForFile(
                     this,
-                    AUTHORITY,
+                    getPackageName() + ".provider",
                     file
             );
 
@@ -81,11 +83,11 @@ public class MainActivity extends AppCompatActivity {
             intent.setDataAndType(uri, "image/*");
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-            startActivity(intent);
+            startActivity(Intent.createChooser(intent, "Definir papel de parede"));
 
         } catch (Exception e) {
-            Toast.makeText(this, "Erro ao abrir editor de papel de parede", Toast.LENGTH_LONG).show();
             e.printStackTrace();
+            Toast.makeText(this, "Erro ao abrir o papel de parede", Toast.LENGTH_SHORT).show();
         }
     }
 }
